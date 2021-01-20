@@ -5,6 +5,7 @@
      "username": "root",
      "password": "96462825Ga@",
      "database": "register",
-     "entities": ["./src/**/*.entity.ts}", "./dist/**/*.entity.js}"],
-     "synchronize": true
+     "entities": ["dist/**/*.entity{.ts,.js}"],
+     "synchronize": true,
+     "autoLoadEntities": true
 }
