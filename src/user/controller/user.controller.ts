@@ -1,4 +1,5 @@
-import { Observable } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
 import { UserService } from './../service/user.service';
 import {
   Body,
@@ -15,9 +16,21 @@ import { User } from '../models/user.interface';
 export class UserController {
   constructor(private userService: UserService) {}
 
+  @Post('login')
+  login(@Body() user: User): Observable<Object> {
+    return this.userService.login(user).pipe(
+      map((jwt: string) => {
+        return { access_token: jwt };
+      }),
+    );
+  }
+
   @Post()
-  create(@Body() user: User): Observable<User> {
-    return this.userService.create(user);
+  create(@Body() user: User): Observable<User | Object> {
+    return this.userService.create(user).pipe(
+      map((user: User) => user),
+      catchError((err) => of({ error: err.message })),
+    );
   }
 
   @Get()
