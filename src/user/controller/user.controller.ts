@@ -1,5 +1,3 @@
-import { catchError, map } from 'rxjs/operators';
-import { Observable, of } from 'rxjs';
 import { UserService } from './../service/user.service';
 import {
   Body,
@@ -17,39 +15,37 @@ export class UserController {
   constructor(private userService: UserService) {}
 
   @Post('login')
-  login(@Body() user: User): Observable<Object> {
-    return this.userService.login(user).pipe(
-      map((jwt: string) => {
-        return { access_token: jwt };
-      }),
-    );
+  async login(@Body() user: User): Promise<Object> {
+    const jwt = await this.userService.login(user);
+    return { access_token: jwt };
   }
 
   @Post()
-  create(@Body() user: User): Observable<User | Object> {
-    return this.userService.create(user).pipe(
-      map((user: User) => user),
-      catchError((err) => of({ error: err.message })),
-    );
+  async create(@Body() user: User): Promise<User | Object> {
+    try {
+      return await this.userService.create(user);
+    } catch (err) {
+      return { error: err.message };
+    }
   }
 
   @Get()
-  findAll(@Param() params): Observable<User[]> {
-    return this.userService.findAll();
+  async findAll(@Param() params): Promise<User[]> {
+    return await this.userService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Observable<User> {
-    return this.userService.findOne(Number(id));
+  async findOne(@Param('id') id: string): Promise<User> {
+    return await this.userService.findOne(Number(id));
   }
 
   @Delete(':id')
-  deleteOne(@Param('id') id: string): Observable<any> {
-    return this.userService.deleteOne(Number(id));
+  async deleteOne(@Param('id') id: string): Promise<any> {
+    return await this.userService.deleteOne(Number(id));
   }
 
   @Put(':id')
-  updateOne(@Param('id') id: string, @Body() user: User): Observable<any> {
-    return this.userService.updateOne(Number(id), user);
+  async updateOne(@Param('id') id: string, @Body() user: User): Promise<any> {
+    return await this.userService.updateOne(Number(id), user);
   }
 }

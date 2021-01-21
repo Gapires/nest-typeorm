@@ -1,4 +1,3 @@
-import { Observable, from } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User } from 'src/user/models/user.interface';
@@ -9,18 +8,18 @@ const bcrypt = require('bcrypt');
 export class AuthService {
   constructor(private readonly jwtService: JwtService) {}
 
-  generateJWT(user: User): Observable<string> {
-    return from(this.jwtService.signAsync({ user }));
+  async generateJWT(user: User): Promise<string> {
+    return await this.jwtService.signAsync({ user });
   }
 
-  hashPassword(password: string): Observable<string> {
-    return from<string>(bcrypt.hash(password, 12));
+  async hashPassword(password: string): Promise<string> {
+    return await bcrypt.hash(password, 12);
   }
 
-  comparePasswords(
+  async comparePasswords(
     newPassword: string,
     passwordHash: string,
-  ): Observable<any | boolean> {
-    return from<any | boolean>(bcrypt.compare(newPassword, passwordHash));
+  ): Promise<boolean> {
+    return await bcrypt.compare(newPassword, passwordHash);
   }
 }

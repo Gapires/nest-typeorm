@@ -2,8 +2,6 @@ import { UserEntity } from './../models/user.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { from, Observable, throwError } from 'rxjs';
-import { switchMap, map, catchError } from 'rxjs/operators';
 import { User } from '../models/user.interface';
 import { AuthService } from 'src/auth/service/auth.service';
 
@@ -15,86 +13,70 @@ export class UserService {
     private authService: AuthService,
   ) {}
 
-  create(user: User): Observable<User> {
-    return this.authService.hashPassword(user.password).pipe(
-      switchMap((passwordHash: string) => {
-        const newUser = new UserEntity();
-        newUser.name = user.name;
-        newUser.email = user.email;
-        newUser.userName = user.userName;
-        newUser.password = passwordHash;
+  async create(user: User): Promise<User> {
+    const passwordHash = await this.authService.hashPassword(user.password);
 
-        return from(this.userRepository.save(newUser)).pipe(
-          map((user: User) => {
-            const { password, ...result } = user;
-            return result;
-          }),
-          catchError((error) => throwError(error)),
-        );
-      }),
-    );
+    const newUser = new UserEntity();
+    newUser.name = user.name;
+    newUser.email = user.email;
+    newUser.userName = user.userName;
+    newUser.password = passwordHash;
+
+    const savedUser = await this.userRepository.save(newUser);
+
+    const { password, ...result } = savedUser;
+    return result;
   }
 
-  findAll(): Observable<User[]> {
-    return from(this.userRepository.find()).pipe(
-      map((users: User[]) => {
-        users.forEach((user: User) => delete user.password);
-        return users;
-      }),
-    );
+  async findAll(): Promise<User[]> {
+    const users = await this.userRepository.find();
+    users.forEach((user: User) => delete user.password);
+    return users;
   }
 
-  findOne(id: number): Observable<User> {
-    return from(this.userRepository.findOne({ id })).pipe(
-      map((user: User) => {
-        const { password, ...result } = user;
-        return result;
-      }),
-    );
+  async findOne(id: number): Promise<User> {
+    const user = await this.userRepository.findOne({ id });
+
+    const { password, ...result } = user;
+    return result;
   }
 
-  deleteOne(id: number): Observable<any> {
-    return from(this.userRepository.delete(id));
+  async deleteOne(id: number): Promise<any> {
+    return this.userRepository.delete(id);
   }
 
-  updateOne(id: number, user: User): Observable<any> {
+  async updateOne(id: number, user: User): Promise<any> {
     delete user.email;
     delete user.password;
-    return from(this.userRepository.update(id, user));
+    return await this.userRepository.update(id, user);
   }
 
-  login(user: User): Observable<string> {
-    return this.validateUser(user.email, user.password).pipe(
-      switchMap((user: User) => {
-        if (user) {
-          return this.authService
-            .generateJWT(user)
-            .pipe(map((jwt: string) => jwt));
-        } else {
-          return 'Wrong Credentials';
-        }
-      }),
+  async login(user: User): Promise<string> {
+    const validatedUser = await this.validateUser(user.email, user.password);
+
+    if (validatedUser) {
+      return await this.authService.generateJWT(validatedUser);
+    } else {
+      return 'Wrong Credentials';
+    }
+  }
+
+  async validateUser(email: string, password: string): Promise<User> {
+    const user = await this.findByEmail(email);
+    const compare = await this.authService.comparePasswords(
+      password,
+      user.password,
     );
+
+    if (compare) {
+      const { password, ...result } = user;
+      return result;
+    } else {
+      throw Error;
+    }
   }
 
-  validateUser(email: string, password: string): Observable<User> {
-    return this.findByEmail(email).pipe(
-      switchMap((user: User) =>
-        this.authService.comparePasswords(password, user.password).pipe(
-          map((math: boolean) => {
-            if (math) {
-              const { password, ...result } = user;
-              return result;
-            } else {
-              throw Error;
-            }
-          }),
-        ),
-      ),
-    );
-  }
-
-  findByEmail(email: string): Observable<User> {
-    return from(this.userRepository.findOne({ email }));
+  async findByEmail(email: string): Promise<User> {
+    return this.userRepository.findOne({ email });
   }
 }
